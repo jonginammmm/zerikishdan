@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Lifeform JavaScript Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b101d;
+            touch-action: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <!-- Three.js va OrbitControls kutubxonalari -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        class WaterStuff extends THREE.Group {
+            constructor() {
+                super();
+
+                // Capsulani xatoliksiz hosil qilish funksiyasi
+                const createCapsuleGeometry = (radius, length, capSubdivisions, radialSegments) => {
+                    if (THREE.CapsuleGeometry) {
+                        return new THREE.CapsuleGeometry(radius, length, capSubdivisions, radialSegments);
+                    }
+                    const geo = new THREE.CylinderGeometry(radius, radius, length, radialSegments);
+                    return geo;
+                };
+
+                this.items = Array.from({ length: 50 }, () => {
+                    const geometry = createCapsuleGeometry(0.25, 2, 4, 8);
+                    const material = new THREE.MeshBasicMaterial({
+                        wireframe: true,
+                        color: "#6688aa"
+                    });
+
+                    const item = new THREE.Mesh(geometry, material);
+
+                    this.setRandom(item, 50 * Math.random() * 100);
+
+                    this.add(item);
+
+                    return item;
+                });
+            }
+
+            setRandom(item, delay = 0) {
+                item.position.set(
+                    (Math.random() - 0.5) * 25,
+                    (Math.random() - 0.5) * 25,
+                    (Math.random() - 0.5) * 25
+                );
+
+                item.rotation.set(
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI,
+                    Math.random() * Math.PI
+                );
+
+                item.userData = {
+                    rotSpeedX: (Math.random() - 0.5) * 0.02,
+                    rotSpeedY: (Math.random() - 0.5) * 0.02,
+                    delay: delay
+                };
+            }
+
+            update(time) {
+                this.items.forEach((item) => {
+                    item.rotation.x += item.userData.rotSpeedX;
+                    item.rotation.y += item.userData.rotSpeedY;
+
+                    item.position.x += Math.sin(time + item.userData.delay) * 0.02;
+                    item.position.y += Math.cos(time * 0.8 + item.userData.delay) * 0.02;
+                    item.position.z += Math.sin(time * 0.5 + item.userData.delay) * 0.02;
+                });
+            }
+        }
+
+        // --- Scene, Camera, Renderer Sozlamalari ---
+
+        const container = document.getElementById('canvas-container');
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0b101d);
+
+        const camera = new THREE.PerspectiveCamera(
+            60,
+            window.innerWidth / window.innerHeight,
+            0.1,
+            1000
+        );
+        camera.position.set(0, 0, 30);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        container.appendChild(renderer.domElement);
+
+        // --- Interactive OrbitControls (Sichqoncha va Sensor Zoom/Rotate) ---
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.rotateSpeed = 0.8;
+        controls.zoomSpeed = 1.2;
+
+        // --- Obyektni Sahnaga Qo'shish ---
+
+        const lifeform = new WaterStuff();
+        scene.add(lifeform);
+
+        // --- Animatsiya Sikli ---
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+
+            lifeform.update(elapsedTime);
+            lifeform.rotation.y = elapsedTime * 0.08;
+
+            controls.update();
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // --- Oyna O'lchami O'zgarganda (Resize) ---
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
